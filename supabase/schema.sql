@@ -1,0 +1,21 @@
+create extension if not exists pgcrypto;
+
+create table if not exists public.categories (id uuid primary key default gen_random_uuid(), name text not null unique, slug text not null unique, created_at timestamptz default now());
+create table if not exists public.products (id uuid primary key default gen_random_uuid(), name text not null, slug text not null unique, description text default '', price numeric(12,2) not null default 0, compare_price numeric(12,2), stock integer not null default 0, category_id uuid references public.categories(id) on delete set null, image_url text, active boolean not null default true, created_at timestamptz default now(), updated_at timestamptz default now());
+create table if not exists public.orders (id uuid primary key default gen_random_uuid(), user_id uuid references auth.users(id) on delete set null, status text not null default 'pending' check(status in ('pending','confirmed','processing','shipped','delivered','cancelled')), payment_status text not null default 'pending' check(payment_status in ('pending','paid','failed','refunded')), payment_method text not null default 'cod', subtotal numeric(12,2) not null default 0, shipping numeric(12,2) not null default 0, total numeric(12,2) not null default 0, customer_name text not null, phone text not null, email text, address text not null, city text not null, pincode text not null, created_at timestamptz default now());
+create table if not exists public.order_items (id uuid primary key default gen_random_uuid(), order_id uuid not null references public.orders(id) on delete cascade, product_id uuid references public.products(id) on delete set null, product_name text not null, price numeric(12,2) not null, quantity integer not null check(quantity > 0));
+create table if not exists public.coupons (id uuid primary key default gen_random_uuid(), code text not null unique, discount_type text not null check(discount_type in ('percent','fixed')), discount_value numeric(12,2) not null, active boolean default true, expires_at timestamptz);
+
+alter table public.categories enable row level security;
+alter table public.products enable row level security;
+alter table public.orders enable row level security;
+alter table public.order_items enable row level security;
+alter table public.coupons enable row level security;
+
+create policy "public can read active products" on public.products for select using (active = true);
+create policy "public can read categories" on public.categories for select using (true);
+create policy "users can read own orders" on public.orders for select using (auth.uid() = user_id);
+create policy "users can create own orders" on public.orders for insert with check (auth.uid() = user_id);
+create policy "users can read own order items" on public.order_items for select using (exists(select 1 from public.orders o where o.id = order_id and o.user_id = auth.uid()));
+
+insert into public.categories(name,slug) values ('Electronics','electronics'),('Fashion','fashion'),('Home & Living','home-living'),('Accessories','accessories') on conflict do nothing;
