@@ -1,55 +1,23 @@
-const products = [
-  { name: 'Premium Wireless Headphones', price: '₹2,499', icon: '🎧' },
-  { name: 'Smart Watch Pro', price: '₹3,999', icon: '⌚' },
-  { name: 'Portable Bluetooth Speaker', price: '₹1,799', icon: '🔊' },
-  { name: 'Everyday Backpack', price: '₹1,299', icon: '🎒' },
-];
+'use client';
+import { useMemo, useState } from 'react';
+import { Search, ShoppingCart, Heart, User, X, Plus, Minus, ArrowRight } from 'lucide-react';
+import { defaultProducts, money, Product } from './store';
 
 export default function Home() {
-  return (
-    <>
-      <div className="topbar">Free shipping on orders above ₹999</div>
-      <header className="nav">
-        <div className="container nav-inner">
-          <div className="logo">ECOMMERCE</div>
-          <div className="search">
-            <input placeholder="Search products..." aria-label="Search products" />
-            <button>Search</button>
-          </div>
-          <div className="actions">
-            <button className="action">♡ <span>Wishlist</span></button>
-            <button className="action">🛒 <span>Cart</span></button>
-          </div>
-        </div>
-      </header>
-
-      <main className="container">
-        <section className="hero">
-          <h1>Shop smarter.<br />Live better.</h1>
-          <p>Discover quality products at great prices, with a fast and simple shopping experience.</p>
-          <a className="btn" href="#products">Shop now →</a>
-        </section>
-
-        <div className="section-title"><h2>Shop by category</h2></div>
-        <section className="categories">
-          {['Electronics', 'Fashion', 'Home & Living', 'Accessories'].map((item) => <div className="category" key={item}>{item} →</div>)}
-        </section>
-
-        <div className="section-title" id="products"><h2>Featured products</h2><a href="#">View all →</a></div>
-        <section className="products">
-          {products.map((product) => (
-            <article className="card" key={product.name}>
-              <div className="product-image">{product.icon}</div>
-              <div className="card-body">
-                <h3>{product.name}</h3>
-                <div className="card-footer"><span className="price">{product.price}</span><button className="add">Add to cart</button></div>
-              </div>
-            </article>
-          ))}
-        </section>
-      </main>
-
-      <footer className="footer"><div className="container"><strong>ECOMMERCE</strong><p>Modern online shopping, built for customers and businesses.</p></div></footer>
-    </>
-  );
+  const [query,setQuery]=useState(''); const [category,setCategory]=useState('All'); const [cart,setCart]=useState<Record<string,number>>({}); const [cartOpen,setCartOpen]=useState(false);
+  const categories=['All',...Array.from(new Set(defaultProducts.map(p=>p.category)))];
+  const visible=useMemo(()=>defaultProducts.filter(p=>(category==='All'||p.category===category)&&`${p.name} ${p.category}`.toLowerCase().includes(query.toLowerCase())),[category,query]);
+  const cartItems=defaultProducts.filter(p=>cart[p.id]); const count=Object.values(cart).reduce((a,b)=>a+b,0); const total=cartItems.reduce((s,p)=>s+p.price*cart[p.id],0);
+  const add=(id:string)=>setCart(c=>({...c,[id]:(c[id]||0)+1})); const remove=(id:string)=>setCart(c=>{const n={...c};n[id]=(n[id]||0)-1;if(n[id]<=0)delete n[id];return n});
+  return <>
+    <div className="topbar">Free shipping on orders above ₹999 · Secure checkout</div>
+    <header className="nav"><div className="container nav-inner"><a className="logo" href="/">ECOMMERCE</a><div className="search"><Search size={19}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search products..."/><button onClick={()=>document.getElementById('products')?.scrollIntoView({behavior:'smooth'})}>Search</button></div><div className="actions"><button className="action"><Heart size={18}/><span>Wishlist</span></button><button className="action" onClick={()=>setCartOpen(true)}><ShoppingCart size={18}/><span>Cart ({count})</span></button><a className="action" href="/admin"><User size={18}/><span>Admin</span></a></div></div></header>
+    <main className="container"><section className="hero"><div><div className="eyebrow">NEW SEASON · 2026</div><h1>Shop smarter.<br/>Live better.</h1><p>Discover quality products at great prices, with a fast and simple shopping experience.</p><a className="btn" href="#products">Shop now <ArrowRight size={18}/></a></div><div className="hero-art">🛍️</div></section>
+      <div className="section-title"><h2>Shop by category</h2></div><div className="categories">{categories.slice(1).map(c=><button key={c} className={`category ${category===c?'active':''}`} onClick={()=>setCategory(c)}>{c}<ArrowRight size={18}/></button>)}</div>
+      <div className="section-title" id="products"><h2>Featured products</h2><span>{visible.length} products</span></div><div className="filters">{categories.map(c=><button key={c} className={category===c?'selected':''} onClick={()=>setCategory(c)}>{c}</button>)}</div>
+      <section className="products">{visible.map(p=><article className="card" key={p.id}><div className="product-image">{p.emoji}<button className="heart"><Heart size={18}/></button></div><div className="card-body"><small>{p.category}</small><h3>{p.name}</h3><p>{p.description}</p><div className="card-footer"><span className="price">{money(p.price)}</span><button className="add" onClick={()=>{add(p.id);setCartOpen(true)}}><Plus size={17}/> Add</button></div></div></article>)}</section>
+      {visible.length===0&&<div className="empty">No products found. Try another search.</div>}<section className="trust"><div><strong>🚚 Fast delivery</strong><span>Reliable shipping</span></div><div><strong>🔒 Secure checkout</strong><span>Your data is protected</span></div><div><strong>↩️ Easy returns</strong><span>Simple return process</span></div><div><strong>💬 Support</strong><span>We're here to help</span></div></section></main>
+    <footer className="footer"><div className="container footer-grid"><div><strong>ECOMMERCE</strong><p>Modern online shopping, built for customers and businesses.</p></div><div><strong>Store</strong><p>Products<br/>Categories<br/>Offers</p></div><div><strong>Help</strong><p>Contact us<br/>Shipping<br/>Returns</p></div><div><strong>Account</strong><p>Login<br/>Orders<br/>Wishlist</p></div></div></footer>
+    {cartOpen&&<div className="overlay" onClick={()=>setCartOpen(false)}><aside className="cart-panel" onClick={e=>e.stopPropagation()}><div className="cart-head"><h2>Your cart</h2><button onClick={()=>setCartOpen(false)}><X/></button></div>{cartItems.length===0?<div className="cart-empty">Your cart is empty.</div>:<>{cartItems.map(p=><div className="cart-item" key={p.id}><span className="cart-icon">{p.emoji}</span><div><strong>{p.name}</strong><small>{money(p.price)}</small><div className="qty"><button onClick={()=>remove(p.id)}><Minus size={14}/></button><span>{cart[p.id]}</span><button onClick={()=>add(p.id)}><Plus size={14}/></button></div></div></div>)}<div className="cart-total"><span>Total</span><strong>{money(total)}</strong></div><button className="checkout" onClick={()=>alert('Checkout is ready for payment-gateway integration.')}>Proceed to checkout</button></>}</aside></div>}
+  </>;
 }
